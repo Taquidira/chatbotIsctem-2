@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chatbot ISCTEM</title>
+    <style> 
+
+    .hidden{
+    display:none;
+}
+
+
+    #chat-icon{
+    position:fixed;
+    bottom:20px;
+    right:20px;
+    width:60px;
+    height:60px;
+    background:#F9C80E;
+    border-radius:50%;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    font-size:28px;
+    cursor:pointer;
+    box-shadow:0 4px 10px rgba(0,0,0,0.3);
+    z-index:999;
+}
+
+#chat-box {
+    position:fixed;
+    bottom:90px;
+    right:20px;
+    width:300px;
+    height:400px;
+    background:white;
+    border-radius:12px;
+    display:flex;
+    flex-direction:column;
+    box-shadow:0 10px 25px rgba(0,0,0,0.3);
+    overflow:hidden;
+    z-index:999;
+
+    opacity: 0;
+    transform: scale(0.85) translateY(20px);
+    pointer-events: none;
+    transition: all 0.25s ease;
+}
+
+
+#chat-box.open {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    pointer-events: auto;
+}
+.chat-header{
+    background:#0B3D91;
+    color:white;
+    padding:10px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    font-weight:bold;
+}
+
+#chat-messages {
+    flex: 1;
+    padding: 10px;
+    overflow-y: auto;
+
+    display: flex;
+    flex-direction: column;
+}
+.chat-header,
+#chat-messages,
+.chat-input,
+#typing {
+    position: relative;
+    z-index: 1;
+}
+
+.msg-user {
+    display: inline-block;
+    background: #F9C80E;
+    color: black;
+    padding: 8px 12px;
+    border-radius: 18px 18px 0 18px;
+    margin: 6px;
+    max-width: 75%;
+    align-self: flex-end;
+    word-wrap: break-word;
+}
+
+.msg-bot {
+    display: inline-block;
+    background: #e5e5ea;
+    color: black;
+    padding: 8px 12px;
+    border-radius: 18px 18px 18px 0;
+    margin: 6px;
+    max-width: 75%;
+    align-self: flex-start;
+    word-wrap: break-word;
+    white-space: pre-line;
+}
+
+.msg-user, .msg-bot {
+    animation: pop 0.2s ease;
+}
+
+@keyframes pop {
+    from {
+        transform: scale(0.9);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.typing-bubble {
+    background: #e5e5ea;
+    padding: 8px 12px;
+    border-radius: 18px 18px 18px 0;
+    display: inline-block;
+    margin: 6px;
+    max-width: 75%;
+    align-self: flex-start;
+}
+
+.dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    margin: 0 2px;
+    background: #777;
+    border-radius: 50%;
+    animation: bounce 4s infinite;
+}
+
+.dot:nth-child(2) { animation-delay: 4s; }
+.dot:nth-child(3) { animation-delay: 4s; }
+
+@keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-4px); }
+}
+.chat-input{
+    display:flex;
+    border-top:1px solid #ddd;
+}
+
+.chat-input input{
+    flex:1;
+    padding:10px;
+    border:none;
+    outline:none;
+}
+
+.chat-input button{
+    background:#F9C80E;
+    border:none;
+    padding:10px;
+    cursor:pointer;
+    font-weight:bold;
+}
+
+/* typing dots */
+.typing{
+    padding:5px 10px;
+}
+
+.typing span{
+    width:6px;
+    height:6px;
+    margin:0 2px;
+    background:#999;
+    display:inline-block;
+    border-radius:50%;
+    animation:bounce 4s infinite;
+}
+
+.typing span:nth-child(2){ animation-delay: 10s; }
+.typing span:nth-child(3){ animation-delay: 10s; }
+
+@keyframes bounce{
+    0%,100%{ transform:translateY(0); }
+    50%{ transform:translateY(-5px); }
+}
+
+#chat-box::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: url("unnamed.png") center/200px no-repeat;
+    opacity: 0.25;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.msg-time {
+    font-size: 10px;
+    opacity: 0.6;
+    margin-top: 4px;
+    text-align: right;
+}
+
+.status {
+    font-size: 12px;
+    opacity: 0.8;
+    margin-top: 2px;
+}
+
+.status-typing {
+    color: #F9C80E;
+    font-weight: bold;
+}
+
+
+.status-typing::after {
+    content: " ...";
+    animation: blinkDots 4s infinite;
+}
+
+
+@keyframes blinkDots {
+    0% { opacity: 0.3; }
+    50% { opacity: 1; }
+    100% { opacity: 0.3; }
+}
+
+.msg-meta{
+    display:flex;
+    justify-content:flex-end;
+    gap:6px;
+    font-size:10px;
+    margin-top:4px;
+    opacity:0.75;
+}
+
+.msg-check{
+    color:#4caf50; /* verde tipo WhatsApp */
+    font-weight:bold;
+}
+
+body{
+    margin:0;
+    font-family: Arial, sans-serif;
+    background:#e5e5ea;
+}
+
+body::before{
+    content:"";
+    position:fixed;
+    inset:0;
+    background:url("unnamed.png") center no-repeat;
+    background-size:400px;
+    opacity:0.06;
+    pointer-events:none;
+    z-index:0;
+}
+/* SITE */
+.site-bg{
+    padding:40px;
+}
+
+.header-site{
+    background:#0B3D91;
+    color:white;
+    padding:25px;
+    border-radius:12px;
+    margin-bottom:20px;
+}
+
+.content h2{
+    color:#0B3D91;
+}
+
+.cards{
+    display:grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap:15px;
+    margin-top:20px;
+}
+
+.card{
+    background:white;
+    padding:20px;
+    border-radius:12px;
+    box-shadow:0 5px 15px rgba(0,0,0,0.1);
+    cursor:pointer;
+    transition:0.2s;
+}
+
+.card:hover{
+    transform:scale(1.03);
+}
+    </style>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+
+<body>
+
+
+    <!-- SITE (FUNDO) -->
+<div class="site-bg">
+
+    <div class="header-site">
+        <h1>ISCTEM</h1>
+        <p>Instituto Superior de Ciências e Tecnologia de Moçambique</p>
+    </div>
+
+    <div class="content">
+        <h2>Bem-vindo ao Isctem Website</h2>
+        <p>Aqui podes aceder a informações sobre cursos, inscrições e serviços académicos.</p>
+
+        <div class="cards">
+            <div class="card">📚 Cursos</div>
+            <div class="card">📝 Inscrições</div>
+            <div class="card">📅 Calendário</div>
+            <div class="card">📞 Contactos</div>
+        </div>
+    </div>
+
+</div>
+
+<!-- BOTÃO FLUTUANTE -->
+<div id="chat-icon" onclick="toggleChat()">💬</div>
+
+<!-- JANELA DO CHAT -->
+<div id="chat-box">
+
+   <div class="chat-header">
+    <div>
+        Chat ISCTEM
+        <div class="status" id="chat-status">🟢 online</div>
+    </div>
+
+    <span onclick="toggleChat()" style="cursor:pointer;">✖</span>
+</div>
+
+    <div id="chat-messages"></div>
+
+    <div id="typing" class="typing hidden">
+        <span></span><span></span><span></span>
+    </div>
+
+    <div class="chat-input">
+        <input id="chat-input" placeholder="Escreve aqui..." />
+        <button onclick="sendMessage()">Enviar</button>
+    </div>
+
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>

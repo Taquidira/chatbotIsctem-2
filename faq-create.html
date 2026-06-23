@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Criar FAQ</title>
+
+    <style>
+
+body{
+    margin:0;
+    font-family:Arial, sans-serif;
+    background:#0B3D91;
+    height:100vh;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+}
+
+/* LOGO FUNDO */
+.bg-logo{
+    position:fixed;
+    top:50%;
+    left:50%;
+    width:500px;
+    height:500px;
+    background:url("unnamed.png") no-repeat center;
+    background-size:contain;
+    transform:translate(-50%,-50%);
+    opacity:0.08;
+    z-index:0;
+    pointer-events:none;
+}
+
+/* BOX CENTRAL */
+.form-box{
+    position:relative;
+    z-index:1;
+    background:white;
+    width:360px;
+    padding:25px;
+    border-radius:15px;
+    box-shadow:0 6px 20px rgba(0,0,0,0.3);
+    text-align:center;
+}
+
+/* TITULO */
+.form-box h2{
+    margin-bottom:20px;
+    color:#0B3D91;
+}
+
+/* INPUTS */
+input, textarea{
+    width:100%;
+    padding:10px;
+    margin:8px 0;
+    border-radius:8px;
+    border:1px solid #ccc;
+    outline:none;
+    font-size:14px;
+}
+
+textarea{
+    resize:none;
+    height:90px;
+}
+
+/* BOTAO AMARELO */
+button{
+    width:100%;
+    padding:10px;
+    margin-top:10px;
+    background:#F9C80E;
+    color:black;
+    border:none;
+    border-radius:8px;
+    font-weight:bold;
+    cursor:pointer;
+}
+
+button:hover{
+    opacity:0.9;
+}
+
+/* BOTAO VOLTAR */
+.back-btn{
+    background:#222;
+    color:white;
+}
+
+    </style>
+</head>
+
+<body>
+
+<div class="bg-logo"></div>
+
+<div class="form-box">
+
+    <h2>Criar FAQ</h2>
+
+    <input id="question" placeholder="Pergunta">
+
+    <textarea id="answer" placeholder="Resposta"></textarea>
+
+    <button onclick="saveFAQ()">Guardar FAQ</button>
+
+    <button class="back-btn" onclick="window.location.href='faqs.html'">
+        Voltar
+    </button>
+
+</div>
+
+<script>
+
+async function saveFAQ() {
+
+    let question = document.getElementById("question").value;
+    let answer = document.getElementById("answer").value;
+
+    if (!question || !answer) {
+        alert("Preenche todos os campos!");
+        return;
+    }
+
+    await fetch("http://localhost:3000/add-faq", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question, answer })
+    });
+
+    alert("FAQ criada com sucesso!");
+
+    document.getElementById("question").value = "";
+    document.getElementById("answer").value = "";
+
+    
+}
+
+</script>
+
+</body>
+</html>

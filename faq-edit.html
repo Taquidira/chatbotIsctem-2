@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Editar FAQ</title>
+
+    <style>
+
+body{
+    margin:0;
+    font-family:Arial, sans-serif;
+    background:#0B3D91;
+    height:100vh;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+}
+
+/* LOGO FUNDO */
+.bg-logo{
+    position:fixed;
+    top:50%;
+    left:50%;
+    width:500px;
+    height:500px;
+    background:url("unnamed.png") no-repeat center;
+    background-size:contain;
+    transform:translate(-50%,-50%);
+    opacity:0.08;
+    z-index:0;
+    pointer-events:none;
+}
+
+/* CARD */
+.form-box{
+    position:relative;
+    z-index:1;
+    background:white;
+    width:300px;
+    padding:100px;
+    border-radius:15px;
+    box-shadow:0 6px 20px rgba(0,0,0,0.3);
+    text-align:center;
+}
+
+/* TITULO */
+.form-box h2{
+    margin-bottom:15px;
+    color:#0B3D91;
+}
+
+/* INPUTS */
+input, textarea{
+    width:100%;
+    padding:10px;
+    margin:8px 0;
+    border-radius:8px;
+    border:1px solid #ccc;
+    outline:none;
+    font-size:14px;
+}
+
+textarea{
+    width:100%;
+    min-height:100px;
+    padding:10px;
+    resize:vertical;
+    font-family:Arial, sans-serif;
+}
+
+/* BOTAO AMARELO */
+button{
+    width:100%;
+    padding:10px;
+    margin-top:10px;
+    background:#F9C80E;
+    color:black;
+    border:none;
+    border-radius:8px;
+    font-weight:bold;
+    cursor:pointer;
+}
+
+button:hover{
+    opacity:0.9;
+}
+
+/* VOLTAR */
+.back-btn{
+    background:#222;
+    color:white;
+}
+
+.editor-tools{
+    display: flex;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.editor-tools button{
+    width: 28px;
+    height: 28px;
+    font-size: 14px;
+    border: 1px solid #ddd;
+    background: #fff;
+    border-radius: 6px;
+    cursor: pointer;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.editor-tools button:hover{
+    background: #f0f0f0;
+}
+
+    </style>
+</head>
+
+<body>
+
+<div class="bg-logo"></div>
+
+<div class="form-box">
+
+    <h2>Editar FAQ</h2>
+
+    <input id="question" placeholder="Pergunta">
+
+    <div class="editor-tools">
+    <button onclick="wrapText('<b>','</b>')"><b>B</b></button>
+    <button onclick="wrapText('<i>','</i>')"><i>I</i></button>
+    <button onclick="wrapText('<u>','</u>')"><u>U</u></button>
+    <button onclick="addBullet()">•</button>
+    </div>
+
+    <textarea id="answer" rows="15"></textarea>
+
+    <textarea id="variations" placeholder="Variações (opcional)"></textarea>
+
+    <button onclick="updateFAQ()">Guardar Alterações</button>
+
+    <button class="back-btn" onclick="window.location.href='faqs.html'">
+        Voltar
+    </button>
+
+</div>
+
+<script>
+
+let faqId = null;
+
+/* pegar ID da URL */
+function getId() {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("id");
+}
+
+/* carregar dados */
+async function loadFAQ() {
+
+    faqId = getId();
+
+    let res = await fetch("http://localhost:3000/faqs");
+    let data = await res.json();
+
+    let faq = data.find(f => f.id == faqId);
+
+    if (!faq) {
+        alert("FAQ não encontrada");
+        return;
+    }
+
+    document.getElementById("question").value = faq.question;
+    document.getElementById("answer").value = faq.answer;
+    document.getElementById("variations").value = faq.variations || "";
+}
+
+/* atualizar FAQ */
+async function updateFAQ() {
+
+    let question = document.getElementById("question").value;
+    let answer = document.getElementById("answer").value;
+    let variations = document.getElementById("variations").value;
+
+    await fetch(`http://localhost:3000/faq/${faqId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            question,
+            answer,
+            variations
+        })
+    });
+
+    alert("FAQ atualizada com sucesso!");
+    window.location.href = "faqs.html";
+}
+
+loadFAQ();
+
+</script>
+<script src="script.js"></script>
+</body>
+</html>
