@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Perguntas Não Respondidas</title>
+
+    <style>
+
+body{
+    margin:0;
+    font-family:Arial, sans-serif;
+    background:#0B3D91;
+    padding:20px;
+}
+
+/* LOGO */
+.bg-logo{
+    position:fixed;
+    top:50%;
+    left:50%;
+    width:500px;
+    height:500px;
+    background:url("unnamed.png") no-repeat center;
+    background-size:contain;
+    transform:translate(-50%,-50%);
+    opacity:0.08;
+    z-index:0;
+    pointer-events:none;
+}
+
+/* CONTAINER */
+.box{
+    position:relative;
+    z-index:1;
+    background:white;
+    padding:20px;
+    border-radius:15px;
+    max-width:800px;
+    margin:auto;
+}
+
+/* TABELA */
+table{
+    width:100%;
+    border-collapse:collapse;
+    margin-top:15px;
+}
+
+th{
+    background:#0B3D91;
+    color:white;
+    padding:10px;
+}
+
+td{
+    padding:10px;
+    border-bottom:1px solid #ddd;
+}
+
+/* BOTAO */
+button{
+    background:#F9C80E;
+    border:none;
+    padding:8px 12px;
+    border-radius:8px;
+    cursor:pointer;
+    font-weight:bold;
+}
+
+button:hover{
+    opacity:0.9;
+}
+
+.back{
+    background:#222;
+    color:white;
+    margin-bottom:10px;
+}
+
+    </style>
+</head>
+
+<body>
+
+<div class="bg-logo"></div>
+
+<div class="box">
+
+    <button class="back" onclick="window.location.href='dashboard.html'">
+        Voltar
+    </button>
+
+    <h2>Perguntas Não Respondidas</h2>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Mensagem</th>
+                <th>Ação</th>
+            </tr>
+        </thead>
+
+        <tbody id="data"></tbody>
+    </table>
+
+</div>
+
+<script>
+
+async function load() {
+
+    let res = await fetch("http://localhost:3000/unanswered");
+    let data = await res.json();
+
+    let table = document.getElementById("data");
+
+    table.innerHTML = data.map(item => `
+        <tr>
+            <td>${item.message}</td>
+            <td>
+                <button onclick="toFAQ('${item.message}')">
+                    Transformar em FAQ
+                </button>
+            </td>
+        </tr>
+    `).join("");
+}
+
+async function toFAQ(message) {
+
+    let answer = prompt("Qual é a resposta?");
+
+    if (!answer) return;
+
+    // cria FAQ
+    await fetch("http://localhost:3000/add-faq", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question: message, answer })
+    });
+
+    // marca como tratado
+    await fetch("http://localhost:3000/mark-answered", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message })
+    });
+
+    alert("FAQ criada!");
+
+    load();
+}
+
+load();
+
+</script>
+
+</body>
+</html>

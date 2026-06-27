@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Gerir FAQs</title>
+
+    <style>
+
+        table{
+    width:100%;   
+    margin:30px auto; 
+    border-collapse:separate;
+    border-spacing:0;
+    background:white;
+    border-radius:15px;
+    overflow:hidden;
+    box-shadow:0 4px 12px rgba(0,0,0,0.2);
+}
+        body { 
+    margin:0;
+    font-family:Arial, sans-serif;
+    background:#0B3D91;
+    min-height:100vh;
+}
+
+/* LOGO DE FUNDO */
+.bg-logo{
+    position:fixed;
+    top:50%;
+    left:50%;
+    width:500px;
+    height:500px;
+    background:url("unnamed.png") no-repeat center;
+    background-size:contain;
+    transform:translate(-50%,-50%);
+    opacity:0.08;
+    z-index:0;
+    pointer-events:none;
+}
+
+/* garante que conteúdo fica por cima do fundo */
+.container, table, h1, h2, button{
+    position:relative;
+    z-index:1;
+                       
+            
+ font-family: Arial; padding: 20px; }
+
+        table {
+            width: 70%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th, td {
+            border: 1px solid #1f1355;
+            padding: 10px;
+        }
+
+        th { background: #f2f2f2; }
+
+        button { padding: 8px 10px; margin: 5px; }
+    </style>
+</head>
+
+<body>
+
+    <div class="bg-logo"></div>
+
+<h1>Gerir FAQs</h1>
+
+<button onclick="window.location.href='faq-create.html'">
+    + Criar FAQ
+</button>
+
+<button onclick="window.location.href='dashboard.html'">
+    Voltar
+</button>
+
+<hr>
+
+<table>
+    <thead>
+        <tr>
+            <th>Pergunta</th>
+            <th>Resposta</th>
+            <th>Ações</th>
+        </tr>
+    </thead>
+
+    <tbody id="faqTable"></tbody>
+</table>
+
+<script>
+
+async function loadFAQs() {
+
+    let res = await fetch("http://localhost:3000/faqs");
+    let data = await res.json();
+
+    let table = document.getElementById("faqTable");
+    table.innerHTML = "";
+
+    data.forEach(faq => {
+
+        table.innerHTML += `
+            <tr>
+                <td>${faq.question}</td>
+                <td>${faq.answer}</td>
+                <td>
+                    <button onclick="openEdit(${faq.id})">Editar</button>
+                    <button onclick="deleteFAQ(${faq.id})">Apagar</button>
+                </td>
+            </tr>
+        `;
+    });
+}
+
+function openEdit(id) {
+    window.location.href = `faq-edit.html?id=${id}`;
+}
+
+async function deleteFAQ(id) {
+
+    await fetch(`http://localhost:3000/faq/${id}`, {
+        method: "DELETE"
+    });
+
+    loadFAQs();
+}
+
+loadFAQs();
+
+</script>
+
+</body>
+</html>
