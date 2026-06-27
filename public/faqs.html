@@ -94,7 +94,7 @@
 
 async function loadFAQs() {
 
-    let res = await fetch("http://localhost:3000/faqs");
+    let res = await fetch("https://chatbotiisctem.onrender.com/faqs");
     let data = await res.json();
 
     let table = document.getElementById("faqTable");

@@ -123,7 +123,7 @@ async function login() {
     const username = document.getElementById("username").value;
     const password = document.getElementById("password").value;
 
-    let res = await fetch("http://localhost:3000/login", {
+    let res = await fetch("https://chatbotiisctem.onrender.com/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password })

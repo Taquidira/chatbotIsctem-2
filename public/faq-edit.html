@@ -160,7 +160,7 @@ async function loadFAQ() {
 
     faqId = getId();
 
-    let res = await fetch("http://localhost:3000/faqs");
+    let res = await fetch("https://chatbotiisctem.onrender.com/faqs");
     let data = await res.json();
 
     let faq = data.find(f => f.id == faqId);
