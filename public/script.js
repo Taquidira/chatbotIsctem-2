@@ -114,7 +114,7 @@ userDiv.appendChild(meta);
 
         await new Promise(resolve => setTimeout(resolve, 1200));
 
-        const res = await fetch("http://localhost:3000/chat", {
+        const res = await fetch("https://chatbotiisctem.onrender.com/chat", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ message })
@@ -164,7 +164,7 @@ function getTime() {
 // AQUI VAI A FUNÇÃO createFaq
 async function createFaq(question, id) {
 
-    await fetch("http://localhost:3000/add-faq", {
+    await fetch("https://chatbotiisctem.onrender.com/add-faq", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
