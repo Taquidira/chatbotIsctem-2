@@ -5,7 +5,7 @@ const app = express();
 const path = require("path");
 
 const PORT = process.env.PORT || 3000;
-
+//servidor
 app.listen(PORT, "0.0.0.0", () => {
     console.log("Server running on " + PORT);
 });
@@ -343,11 +343,4 @@ app.post("/register", (req, res) => {
             res.json({ success: true });
         }
     );
-});
-
-
-/* ---------------- SERVER ---------------- */
-const PORT = process.env.PORT || 3000;
-app.listen(3000, () => {
-    console.log("Servidor a rodar na porta 3000");
 });
