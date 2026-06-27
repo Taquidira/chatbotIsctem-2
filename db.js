@@ -1,51 +1,44 @@
 const path = require("path");
-const sqlite3 = require("better-sqlite3");
-const db = new Database("database.db");
-// 📁 garante que a base de dados fica sempre no mesmo sítio
-const dbPath = path.join(process.cwd, "database.db");
+const Database = require("better-sqlite3");
 
+// base de dados no diretório correto do Render
+const dbPath = path.join(process.cwd(), "database.db");
 
-/* ---------------- CRIAR TABELAS AUTOMATICAMENTE ---------------- */
+const db = new Database(dbPath);
 
-db.serialize(() => {
+/* ---------------- CRIAR TABELAS ---------------- */
 
-    // 🔐 ADMINS
-    db.run(`
-        CREATE TABLE IF NOT EXISTS admins (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE,
-            password TEXT
-        )
-    `);
+db.prepare(`
+    CREATE TABLE IF NOT EXISTS admins (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT UNIQUE,
+        password TEXT
+    )
+`).run();
 
-    // 👤 FAQS
-    db.run(`
-        CREATE TABLE IF NOT EXISTS faq (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            question TEXT,
-            answer TEXT,
-            variations TEXT,
-            answers TEXT
-        )
-    `);
+db.prepare(`
+    CREATE TABLE IF NOT EXISTS faq (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        question TEXT,
+        answer TEXT,
+        variations TEXT,
+        answers TEXT
+    )
+`).run();
 
-    // 📊 LOGS
-    db.run(`
-        CREATE TABLE IF NOT EXISTS logs (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            message TEXT,
-            response TEXT,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-    `);
+db.prepare(`
+    CREATE TABLE IF NOT EXISTS logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        message TEXT,
+        response TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+`).run();
 
-    // 👑 ADMIN PADRÃO
-    db.run(`
-        INSERT OR IGNORE INTO admins (username, password)
-        VALUES ('admin', '1234')
-    `);
-
-});
+/* ADMIN PADRÃO */
+db.prepare(`
+    INSERT OR IGNORE INTO admins (username, password)
+    VALUES ('admin', '1234')
+`).run();
 
 module.exports = db;
-
