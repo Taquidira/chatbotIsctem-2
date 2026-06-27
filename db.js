@@ -2,7 +2,7 @@ const path = require("path");
 const sqlite3 = require("sqlite3").verbose();
 
 // 📁 garante que a base de dados fica sempre no mesmo sítio
-const dbPath = path.join(__dirname, "database.db");
+const dbPath = path.join(process.cwd, "database.db");
 
 const db = new sqlite3.Database(dbPath, (err) => {
     if (err) {

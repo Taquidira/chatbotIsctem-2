@@ -4,6 +4,12 @@ const db = require("./database/db");
 const app = express();
 const path = require("path");
 
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, "0.0.0.0", () => {
+    console.log("Server running on " + PORT);
+});
+
 app.use(cors());
 
 app.use(express.json());
