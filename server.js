@@ -60,59 +60,61 @@ app.post("/chat", (req, res) => {
 
     console.log("Mensagem recebida:", message);
 
-    db.all("SELECT * FROM faq", [], (err, faqs) => {
+    // SELECT (better-sqlite3)
+    let faqs;
+    try {
+        faqs = db.prepare("SELECT * FROM faq").all();
+    } catch (err) {
+        return res.json({ response: "Erro no servidor" });
+    }
 
-        if (err) {
-            return res.json({ response: "Erro no servidor" });
-        }
+    let userWords = expandWords(
+        normalize(message)
+            .split(" ")
+            .filter(w => w.length > 1)
+    );
 
-       let userWords = expandWords(
-         normalize(message)
-        .split(" ")
-        .filter(w => w.length > 1));
+    let bestFaq = null;
+    let bestScore = 0;
 
-        let bestFaq = null;
-        let bestScore = 0;
+    for (let faq of faqs) {
 
-        for (let faq of faqs) {
-
-           let allText = `
-               ${faq.question} 
-               ${faq.variations || ""}
-               ${faq.answers || ""}
-`;
+        let allText = `
+            ${faq.question} 
+            ${faq.variations || ""} 
+            ${faq.answers || ""}
+        `;
 
         let faqWords = normalize(allText)
             .split(" ")
             .filter(w => w.length > 1);
 
-            let common = faqWords.filter(w => userWords.includes(w)).length;
+        let common = faqWords.filter(w => userWords.includes(w)).length;
 
-            if (common === 0) continue; 
+        if (common === 0) continue;
 
-            let score = common / faqWords.length;
+        let score = common / faqWords.length;
 
-            if (score > bestScore) {
-                bestScore = score;
-                bestFaq = faq;
-            }
+        if (score > bestScore) {
+            bestScore = score;
+            bestFaq = faq;
         }
+    }
 
-        let response;
+    let response;
 
-        if (bestFaq && bestScore >= 0.25) {
-            response = bestFaq.answer;
-        } else {
-            response = "Não percebi a tua pergunta.";
-        }
+    if (bestFaq && bestScore >= 0.25) {
+        response = bestFaq.answer;
+    } else {
+        response = "Não percebi a tua pergunta.";
+    }
 
-        db.run(
-            "INSERT INTO logs (message, response) VALUES (?, ?)",
-            [message, response]
-        );
+    // INSERT (better-sqlite3)
+    db.prepare(
+        "INSERT INTO logs (message, response) VALUES (?, ?)"
+    ).run(message, response);
 
-        res.json({ response });
-    });
+    res.json({ response });
 });
 /* ---------------- FAQS ---------------- */
 app.get("/faqs", (req, res) => {
@@ -274,21 +276,9 @@ app.get("/stats", (req, res) => {
 
 /* ---------------- LOGS ---------------- */
 app.get("/logs", (req, res) => {
-
-    db.all(
-        "SELECT * FROM logs ORDER BY id DESC",
-        [],
-        (err, rows) => {
-
-            if (err) {
-                return res.status(500).json({ error: err.message });
-            }
-
-            res.json(rows);
-        }
-    );
+    const rows = db.prepare("SELECT * FROM logs").all();
+    res.json(rows);
 });
-
 /* ---------------- ROOT ---------------- */
 app.get("/", (req, res) => {
     res.redirect("/login.html");

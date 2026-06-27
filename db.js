@@ -1,16 +1,9 @@
 const path = require("path");
-const sqlite3 = require("sqlite3").verbose();
-
+const sqlite3 = require("better-sqlite3");
+const db = new Database("database.db");
 // 📁 garante que a base de dados fica sempre no mesmo sítio
 const dbPath = path.join(process.cwd, "database.db");
 
-const db = new sqlite3.Database(dbPath, (err) => {
-    if (err) {
-        console.log("Erro ao abrir DB:", err.message);
-    } else {
-        console.log("Base de dados ligada:", dbPath);
-    }
-});
 
 /* ---------------- CRIAR TABELAS AUTOMATICAMENTE ---------------- */
 
