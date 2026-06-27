@@ -194,6 +194,47 @@ function wrapText(startTag, endTag) {
     textarea.value = newText;
 }
 
+async function login() {
+
+    const username = document.getElementById("username").value;
+    const password = document.getElementById("password").value;
+
+    const res = await fetch("/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password })
+    });
+
+    const data = await res.json();
+
+    if (data.success) {
+        window.location.href = "/dashboard.html";
+    } else {
+        alert("Login errado");
+    }
+}
+
+async function register() {
+
+    const username = document.getElementById("username").value;
+    const password = document.getElementById("password").value;
+
+    const res = await fetch("/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password })
+    });
+
+    const data = await res.json();
+
+    if (data.success) {
+        alert("Conta criada com sucesso!");
+        window.location.href = "/login.html";
+    } else {
+        alert(data.message || "Erro ao criar conta");
+    }
+}
+
 window.onload = resetLogoutTimer;
 document.onmousemove = resetLogoutTimer;
 document.onkeydown = resetLogoutTimer;
