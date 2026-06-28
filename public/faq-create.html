@@ -114,26 +114,40 @@ button:hover{
 
 async function saveFAQ() {
 
-    let question = document.getElementById("question").value;
-    let answer = document.getElementById("answer").value;
+    const question = document.getElementById("question").value.trim();
+    const answer = document.getElementById("answer").value.trim();
 
     if (!question || !answer) {
         alert("Preenche todos os campos!");
         return;
     }
 
-    await fetch("https://chatbotiisctem.onrender.com/chat", {
+    const res = await fetch("https://chatbotiisctem.onrender.com/add-faq", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question, answer })
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            question,
+            answer
+        })
     });
 
-    alert("FAQ criada com sucesso!");
+    const data = await res.json();
 
-    document.getElementById("question").value = "";
-    document.getElementById("answer").value = "";
+    if (data.success) {
+        alert("FAQ criada com sucesso!");
 
-    
+        document.getElementById("question").value = "";
+        document.getElementById("answer").value = "";
+
+        // opcional: voltar automaticamente à lista
+        // window.location.href = "faqs.html";
+
+    } else {
+        alert("Erro ao criar FAQ.");
+        console.log(data);
+    }
 }
 
 </script>

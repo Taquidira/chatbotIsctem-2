@@ -327,10 +327,10 @@ async function loadCharts(){
 
 async function loadUnanswered() {
 
-    let res = await fetch("https://chatbotiisctem.onrender.com/unanswered?t=" + Date.now());
-    let data = await res.json();
+    const res = await fetch("https://chatbotiisctem.onrender.com/unanswered?t=" + Date.now());
+    const data = await res.json();
 
-    let box = document.getElementById("unanswered");
+    const box = document.getElementById("unanswered");
 
     if (!box) {
         console.log("Elemento unanswered não existe no HTML");
@@ -342,20 +342,34 @@ async function loadUnanswered() {
         return;
     }
 
-    box.innerHTML = data.map(item => `
-        <div style="
-            background:white;
-            padding:10px;
-            margin:8px 0;
-            border-radius:8px;
-        ">
-            <b>${item.message}</b>
+    box.innerHTML = "";
 
-            <button id="btn-${item.id}" onclick="createFaq('${item.message}', ${item.id})">
-                Criar FAQ
-            </button>
-        </div>
-    `).join("");
+    data.forEach(item => {
+
+        box.innerHTML += `
+            <div style="
+                background:white;
+                padding:10px;
+                margin:8px 0;
+                border-radius:8px;
+            ">
+                <b>${item.message}</b>
+
+                <button id="btn-${item.id}">
+                    Criar FAQ
+                </button>
+            </div>
+        `;
+
+        setTimeout(() => {
+            document
+                .getElementById(`btn-${item.id}`)
+                .addEventListener("click", () => {
+                    createFaq(item.message, item.id);
+                });
+        }, 0);
+
+    });
 }
 async function login() {
 
