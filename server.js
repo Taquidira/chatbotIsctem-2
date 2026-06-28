@@ -148,42 +148,67 @@ app.post("/add-faq", (req, res) => {
     res.status(500).json({ error: err.message });
 }
 
-    db.run(
-    `UPDATE logs 
-     SET response = 'ANSWERED'
-     WHERE message = ?`,
-    [question]
-);
+    db.prepare(
+    "UPDATE logs SET response = 'ANSWERED' WHERE message = ?"
+).run(question);
 });
 
 /* ---------------- DELETE FAQ ---------------- */
 app.delete("/faq/:id", (req, res) => {
 
-   db.prepare("DELETE FROM faq WHERE id = ?").run(req.params.id);
-res.json({ success: true });
+    try {
+
+        db.prepare(
+            "DELETE FROM faq WHERE id = ?"
+        ).run(req.params.id);
+
+        res.json({ success: true });
+
+    } catch (err) {
+
+        console.log(err);
+
+        res.status(500).json({
+            success: false,
+            error: err.message
+        });
+    }
+
 });
 
 /* ---------------- UPDATE FAQ ---------------- */
 app.put("/faq/:id", (req, res) => {
 
-    const id = req.params.id;
-    const { question, answer, variations, answers } = req.body;
+    try {
 
-    db.prepare(`
-UPDATE faq
-SET question=?, answer=?, variations=?, answers=?
-WHERE id=?
-`).run(
-    question,
-    answer,
-    variations || "",
-    answers || "",
-    id
-);
+        const id = req.params.id;
+        const { question, answer, variations, answers } = req.body;
 
-res.json({ success: true });
+        db.prepare(`
+            UPDATE faq
+            SET question = ?, answer = ?, variations = ?, answers = ?
+            WHERE id = ?
+        `).run(
+            question,
+            answer,
+            variations || "",
+            answers || "",
+            id
+        );
+
+        res.json({ success: true });
+
+    } catch (err) {
+
+        console.log(err);
+
+        res.status(500).json({
+            success: false,
+            error: err.message
+        });
+    }
+
 });
-
 /* ---------------- UNANSWERED ---------------- */
 app.get("/unanswered", (req, res) => {
 
@@ -271,15 +296,17 @@ app.post("/login", (req, res) => {
 
         const { username, password } = req.body;
 
-        console.log("LOGIN RECEBIDO:", username);
-
         const user = db.prepare(
-            "SELECT * FROM admins WHERE username = ? AND password = ?"
-        ).get(username, password);
-
-        console.log("USER:", user);
+            "SELECT * FROM admins WHERE username = ?"
+        ).get(username);
 
         if (!user) {
+            return res.json({ success: false });
+        }
+
+        const valid = bcrypt.compareSync(password, user.password);
+
+        if (!valid) {
             return res.json({ success: false });
         }
 
@@ -287,12 +314,7 @@ app.post("/login", (req, res) => {
 
     } catch (err) {
 
-        console.log("LOGIN ERROR:", err);
-
-        return res.status(500).json({
-            success: false,
-            error: "server error"
-        });
+        return res.status(500).json({ success: false });
     }
 });
 
@@ -303,36 +325,24 @@ app.post("/register", (req, res) => {
 
         const { username, password } = req.body;
 
-        console.log("REGISTER RECEBIDO:", username);
-
         if (!username || !password) {
-            return res.json({
-                success: false,
-                message: "Campos vazios"
-            });
+            return res.json({ success: false, message: "Campos vazios" });
         }
+
+        const hash = bcrypt.hashSync(password, 10);
 
         db.prepare(
             "INSERT INTO admins (username, password) VALUES (?, ?)"
-        ).run(username, password);
+        ).run(username, hash);
 
         return res.json({ success: true });
 
     } catch (err) {
 
-        console.log("REGISTER ERROR:", err);
-
-        // se username já existir
         if (err.message.includes("UNIQUE")) {
-            return res.json({
-                success: false,
-                message: "User já existe"
-            });
+            return res.json({ success: false, message: "User já existe" });
         }
 
-        return res.status(500).json({
-            success: false,
-            error: "server error"
-        });
+        return res.status(500).json({ success: false });
     }
 });

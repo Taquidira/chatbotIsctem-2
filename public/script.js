@@ -235,6 +235,48 @@ async function register() {
     }
 }
 
+async function deleteFaq(id) {
+
+    const res = await fetch(`/faq/${id}`, {
+        method: "DELETE"
+    });
+
+    const data = await res.json();
+
+    if (data.success) {
+        alert("FAQ apagada");
+        location.reload();
+    } else {
+        alert("Erro ao apagar FAQ");
+    }
+}
+
+async function updateFaq(id) {
+
+    const question = document.getElementById(`q-${id}`).value;
+    const answer = document.getElementById(`a-${id}`).value;
+
+    const res = await fetch(`/faq/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            question,
+            answer,
+            variations: "",
+            answers: ""
+        })
+    });
+
+    const data = await res.json();
+
+    if (data.success) {
+        alert("FAQ atualizada");
+        location.reload();
+    } else {
+        alert("Erro ao atualizar FAQ");
+    }
+}
+
 window.onload = resetLogoutTimer;
 document.onmousemove = resetLogoutTimer;
 document.onkeydown = resetLogoutTimer;
