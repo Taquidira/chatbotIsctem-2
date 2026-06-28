@@ -293,9 +293,6 @@ app.get("/", (req, res) => {
 //para login
 app.post("/login", (req, res) => {
 
-    console.log("USER:", user);
-    console.log("PASSWORD OK:", valid);
-
     try {
 
         const { username, password } = req.body;
@@ -304,11 +301,15 @@ app.post("/login", (req, res) => {
             "SELECT * FROM admins WHERE username = ?"
         ).get(username);
 
+        console.log("USER:", user);
+
         if (!user) {
             return res.json({ success: false });
         }
 
         const valid = bcrypt.compareSync(password, user.password);
+
+        console.log("PASSWORD OK:", valid);
 
         if (!valid) {
             return res.json({ success: false });
@@ -318,12 +319,17 @@ app.post("/login", (req, res) => {
 
     } catch (err) {
 
+        console.log("LOGIN ERROR:", err);
+
         return res.status(500).json({ success: false });
     }
 });
 
+
 //para registar novo user
 app.post("/register", (req, res) => {
+
+    console.log("LOGIN BODY:", req.body);
 
     try {
 
