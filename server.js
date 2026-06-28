@@ -67,8 +67,16 @@ app.post("/chat", (req, res) => {
             return res.json({ response: "Mensagem vazia" });
         }
 
-        // SELECT (better-sqlite3)
-        let faqs = db.prepare("SELECT * FROM faq").all();
+        // 🔥 PROTEÇÃO DB (isto evita crash no Render)
+        let faqs = [];
+
+        try {
+            faqs = db.prepare("SELECT * FROM faq").all();
+            console.log("FAQs carregadas:", faqs.length);
+        } catch (dbErr) {
+            console.log("ERRO DB FAQ:", dbErr);
+            return res.json({ response: "Erro no servidor (base de dados)" });
+        }
 
         let userWords = expandWords(
             normalize(message)
@@ -111,9 +119,13 @@ app.post("/chat", (req, res) => {
             response = "Não percebi a tua pergunta.";
         }
 
-        db.prepare(
-            "INSERT INTO logs (message, response) VALUES (?, ?)"
-        ).run(message, response);
+        try {
+            db.prepare(
+                "INSERT INTO logs (message, response) VALUES (?, ?)"
+            ).run(message, response);
+        } catch (logErr) {
+            console.log("ERRO LOG:", logErr);
+        }
 
         res.json({ response });
 
