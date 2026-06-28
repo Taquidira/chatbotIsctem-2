@@ -120,22 +120,29 @@ button:hover{
 
 async function login() {
 
-    const username = document.getElementById("username").value;
-    const password = document.getElementById("password").value;
+    try {
 
-    let res = await fetch("https://chatbotiisctem.onrender.com/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password })
-    });
+        const username = document.getElementById("username").value;
+        const password = document.getElementById("password").value;
 
-    let data = await res.json();
+        let res = await fetch("https://chatbotiisctem.onrender.com/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username, password })
+        });
 
-    if (data.success) {
-        localStorage.setItem("auth", "true");
-        window.location.href = "dashboard.html";
-    } else {
-        document.getElementById("error").innerText = "Credenciais inválidas";
+        let data = await res.json();
+
+        if (data.success) {
+            localStorage.setItem("auth", "true");
+            window.location.href = "dashboard.html";
+        } else {
+            document.getElementById("error").innerText = "Credenciais inválidas";
+        }
+
+    } catch (err) {
+        console.log(err);
+        document.getElementById("error").innerText = "Erro de ligação ao servidor";
     }
 }
 

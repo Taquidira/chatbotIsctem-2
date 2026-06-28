@@ -119,10 +119,12 @@ app.post("/chat", (req, res) => {
 /* ---------------- FAQS ---------------- */
 app.get("/faqs", (req, res) => {
 
-    db.all("SELECT * FROM faq", [], (err, rows) => {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json(rows);
-    });
+   try {
+    const rows = db.prepare("SELECT * FROM faq").all();
+    res.json(rows);
+} catch (err) {
+    res.status(500).json({ error: err.message });
+}
 });
 
 /* ---------------- ADD FAQ ---------------- */
@@ -130,19 +132,21 @@ app.post("/add-faq", (req, res) => {
 
     const { question, answer } = req.body;
 
-    db.run(
-        "INSERT INTO faq (question, answer, variations, answers) VALUES (?, ?, '', '')",
-        [question, answer],
-        function (err) {
+    try {
+    db.prepare(
+        "INSERT INTO faq (question, answer, variations, answers) VALUES (?, ?, '', '')"
+    ).run(question, answer);
 
-            if (err) {
-                console.log("ADD FAQ ERROR:", err.message);
-                return res.status(500).json({ error: err.message });
-            }
+    db.prepare(
+        "UPDATE logs SET response = 'ANSWERED' WHERE message = ?"
+    ).run(question);
 
-            res.json({ success: true });
-        }
-    );
+    res.json({ success: true });
+
+} catch (err) {
+    console.log(err);
+    res.status(500).json({ error: err.message });
+}
 
     db.run(
     `UPDATE logs 
@@ -155,18 +159,8 @@ app.post("/add-faq", (req, res) => {
 /* ---------------- DELETE FAQ ---------------- */
 app.delete("/faq/:id", (req, res) => {
 
-    db.run(
-        "DELETE FROM faq WHERE id = ?",
-        [req.params.id],
-        function (err) {
-
-            if (err) {
-                return res.status(500).json({ error: err.message });
-            }
-
-            res.json({ success: true });
-        }
-    );
+   db.prepare("DELETE FROM faq WHERE id = ?").run(req.params.id);
+res.json({ success: true });
 });
 
 /* ---------------- UPDATE FAQ ---------------- */
@@ -175,49 +169,32 @@ app.put("/faq/:id", (req, res) => {
     const id = req.params.id;
     const { question, answer, variations, answers } = req.body;
 
-    db.run(
-        `UPDATE faq
-         SET question = ?,
-             answer = ?,
-             variations = ?,
-             answers = ?
-         WHERE id = ?`,
-        [
-            question,
-            answer,
-            variations || "",
-            answers || "",
-            id
-        ],
-        function (err) {
+    db.prepare(`
+UPDATE faq
+SET question=?, answer=?, variations=?, answers=?
+WHERE id=?
+`).run(
+    question,
+    answer,
+    variations || "",
+    answers || "",
+    id
+);
 
-            if (err) {
-                return res.status(500).json({ error: err.message });
-            }
-
-            res.json({ success: true });
-        }
-    );
+res.json({ success: true });
 });
 
 /* ---------------- UNANSWERED ---------------- */
 app.get("/unanswered", (req, res) => {
 
-    db.all(
-        `SELECT * FROM logs 
-         WHERE response = "Não percebi a tua pergunta."
-         ORDER BY id DESC`,
-        [],
-        (err, rows) => {
+   const rows = db.prepare(`
+SELECT *
+FROM logs
+WHERE response = 'Não percebi a tua pergunta.'
+ORDER BY id DESC
+`).all();
 
-            if (err) {
-                console.log("UNANSWERED ERROR:", err.message);
-                return res.status(500).json({ error: err.message });
-            }
-
-            res.json(rows);
-        }
-    );
+res.json(rows);
 });
 
 /* ---------------- MARK ANSWERED ---------------- */
@@ -225,54 +202,57 @@ app.post("/mark-answered", (req, res) => {
 
     const { message } = req.body;
 
-    db.run(
-        `UPDATE logs
-         SET response = 'ANSWERED'
-         WHERE message = ? AND response = 'UNANSWERED'`,
-        [message],
-        function (err) {
+   db.prepare(`
+UPDATE logs
+SET response='ANSWERED'
+WHERE message=? AND response='Não percebi a tua pergunta.'
+`).run(message);
 
-            if (err) {
-                return res.status(500).json({ error: err.message });
-            }
-
-            res.json({ success: true });
-        }
-    );
+res.json({ success: true });
 });
 
 /* ---------------- STATS ---------------- */
 app.get("/stats", (req, res) => {
 
-    db.all(`
-        SELECT message, COUNT(*) as total
-        FROM logs
-        GROUP BY message
-        ORDER BY total DESC
-        LIMIT 5
-    `, [], (err, top) => {
+    try {
 
-        db.all(`SELECT COUNT(*) as total FROM logs`, [], (err2, count) => {
+        const top = db.prepare(`
+            SELECT message, COUNT(*) as total
+            FROM logs
+            GROUP BY message
+            ORDER BY total DESC
+            LIMIT 5
+        `).all();
 
-            db.all(`
-                SELECT COUNT(*) as unanswered
-                FROM logs
-                WHERE response = "Não percebi a tua pergunta."
-            `, [], (err3, unanswered) => {
+        const count = db.prepare(`
+            SELECT COUNT(*) as total
+            FROM logs
+        `).get();
 
-                res.json({
-                    total: count[0].total,
-                    unanswered: unanswered[0].unanswered,
-                    topQuestions: top
-                });
+        const unanswered = db.prepare(`
+            SELECT COUNT(*) as unanswered
+            FROM logs
+            WHERE response = 'Não percebi a tua pergunta.'
+        `).get();
 
-            });
-
+        res.json({
+            total: count.total,
+            unanswered: unanswered.unanswered,
+            topQuestions: top
         });
 
-    });
+    } catch (err) {
+
+        console.log("STATS ERROR:", err);
+
+        res.status(500).json({
+            error: err.message
+        });
+    }
 
 });
+
+
 
 /* ---------------- LOGS ---------------- */
 app.get("/logs", (req, res) => {
@@ -287,50 +267,72 @@ app.get("/", (req, res) => {
 //para login
 app.post("/login", (req, res) => {
 
-    const { username, password } = req.body;
+    try {
 
-    db.get(
-        "SELECT * FROM admins WHERE username = ? AND password = ?",
-        [username, password],
-        (err, user) => {
+        const { username, password } = req.body;
 
-            if (err) {
-                return res.status(500).json({ success: false });
-            }
+        console.log("LOGIN RECEBIDO:", username);
 
-            if (!user) {
-                return res.json({ success: false });
-            }
+        const user = db.prepare(
+            "SELECT * FROM admins WHERE username = ? AND password = ?"
+        ).get(username, password);
 
-            res.json({ success: true });
+        console.log("USER:", user);
+
+        if (!user) {
+            return res.json({ success: false });
         }
-    );
+
+        return res.json({ success: true });
+
+    } catch (err) {
+
+        console.log("LOGIN ERROR:", err);
+
+        return res.status(500).json({
+            success: false,
+            error: "server error"
+        });
+    }
 });
 
 //para registar novo user
 app.post("/register", (req, res) => {
 
-    const { username, password } = req.body;
+    try {
 
-    if (!username || !password) {
-        return res.json({ success: false, message: "Campos vazios" });
-    }
+        const { username, password } = req.body;
 
-    db.run(
-        "INSERT INTO admins (username, password) VALUES (?, ?)",
-        [username, password],
-        function (err) {
+        console.log("REGISTER RECEBIDO:", username);
 
-            if (err) {
-
-                if (err.message.includes("UNIQUE")) {
-                    return res.json({ success: false, message: "User já existe" });
-                }
-
-                return res.status(500).json({ success: false });
-            }
-
-            res.json({ success: true });
+        if (!username || !password) {
+            return res.json({
+                success: false,
+                message: "Campos vazios"
+            });
         }
-    );
+
+        db.prepare(
+            "INSERT INTO admins (username, password) VALUES (?, ?)"
+        ).run(username, password);
+
+        return res.json({ success: true });
+
+    } catch (err) {
+
+        console.log("REGISTER ERROR:", err);
+
+        // se username já existir
+        if (err.message.includes("UNIQUE")) {
+            return res.json({
+                success: false,
+                message: "User já existe"
+            });
+        }
+
+        return res.status(500).json({
+            success: false,
+            error: "server error"
+        });
+    }
 });

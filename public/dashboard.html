@@ -301,7 +301,7 @@ async function loadLogs(){
 /* CHART (RANKING) */
 async function loadCharts(){
 
-    let res = await fetch("hhttps://chatbotiisctem.onrender.com/stats");
+    let res = await fetch("https://chatbotiisctem.onrender.com/stats");
     let data = await res.json();
 
     let top = data.topQuestions || [];
@@ -376,6 +376,10 @@ async function login() {
     } else {
         document.getElementById("error").innerText = "Credenciais inválidas";
     }
+
+    if (localStorage.getItem("auth") !== "true") {
+    window.location.href = "login.html";
+}
 }
 
 //grafico pizza
