@@ -251,10 +251,10 @@ if(localStorage.getItem("auth") !== "true"){
 /* STATS */
 async function loadStats(){
 
-    let res = await fetch("https://chatbotiisctem.onrender.com/stats");
+    let res = await fetch("https://chatbotIsctem-2.onrender.com/stats");
     let data = await res.json();
 
-    let logsRes = await fetch("https://chatbotiisctem.onrender.com/logs");
+    let logsRes = await fetch("https://chatbotIsctem-2.onrender.com/logs");
     let logs = await logsRes.json();
 
     let answeredCount = logs.filter(l =>
