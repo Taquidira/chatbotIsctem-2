@@ -57,65 +57,74 @@ function normalize(text) {
 /* ---------------- CHATBOT (VERSÃO ESTÁVEL FINAL) ---------------- */
 app.post("/chat", (req, res) => {
 
-    const message = req.body.message;
-
-    console.log("Mensagem recebida:", message);
-
-    // SELECT (better-sqlite3)
-    let faqs;
     try {
-        faqs = db.prepare("SELECT * FROM faq").all();
-    } catch (err) {
-        return res.json({ response: "Erro no servidor" });
-    }
 
-    let userWords = expandWords(
-        normalize(message)
-            .split(" ")
-            .filter(w => w.length > 1)
-    );
+        const message = req.body.message;
 
-    let bestFaq = null;
-    let bestScore = 0;
+        console.log("Mensagem recebida:", message);
 
-    for (let faq of faqs) {
-
-        let allText = `
-            ${faq.question} 
-            ${faq.variations || ""} 
-            ${faq.answers || ""}
-        `;
-
-        let faqWords = normalize(allText)
-            .split(" ")
-            .filter(w => w.length > 1);
-
-        let common = faqWords.filter(w => userWords.includes(w)).length;
-
-        if (common === 0) continue;
-
-        let score = common / faqWords.length;
-
-        if (score > bestScore) {
-            bestScore = score;
-            bestFaq = faq;
+        if (!message) {
+            return res.json({ response: "Mensagem vazia" });
         }
+
+        // SELECT (better-sqlite3)
+        let faqs = db.prepare("SELECT * FROM faq").all();
+
+        let userWords = expandWords(
+            normalize(message)
+                .split(" ")
+                .filter(w => w.length > 1)
+        );
+
+        let bestFaq = null;
+        let bestScore = 0;
+
+        for (let faq of faqs) {
+
+            let allText = `
+                ${faq.question} 
+                ${faq.variations || ""} 
+                ${faq.answers || ""}
+            `;
+
+            let faqWords = normalize(allText)
+                .split(" ")
+                .filter(w => w.length > 1);
+
+            let common = faqWords.filter(w => userWords.includes(w)).length;
+
+            if (common === 0) continue;
+
+            let score = common / faqWords.length;
+
+            if (score > bestScore) {
+                bestScore = score;
+                bestFaq = faq;
+            }
+        }
+
+        let response;
+
+        if (bestFaq && bestScore >= 0.25) {
+            response = bestFaq.answer;
+        } else {
+            response = "Não percebi a tua pergunta.";
+        }
+
+        db.prepare(
+            "INSERT INTO logs (message, response) VALUES (?, ?)"
+        ).run(message, response);
+
+        res.json({ response });
+
+    } catch (err) {
+
+        console.log("CHAT ERROR:", err);
+
+        return res.status(500).json({
+            response: "Erro no servidor (chat)"
+        });
     }
-
-    let response;
-
-    if (bestFaq && bestScore >= 0.25) {
-        response = bestFaq.answer;
-    } else {
-        response = "Não percebi a tua pergunta.";
-    }
-
-    // INSERT (better-sqlite3)
-    db.prepare(
-        "INSERT INTO logs (message, response) VALUES (?, ?)"
-    ).run(message, response);
-
-    res.json({ response });
 });
 /* ---------------- FAQS ---------------- */
 app.get("/faqs", (req, res) => {
@@ -298,6 +307,12 @@ app.post("/login", (req, res) => {
 
         const { username, password } = req.body;
 
+        console.log("LOGIN BODY:", req.body);
+
+        if (!username || !password) {
+            return res.json({ success: false, message: "Campos vazios" });
+        }
+
         const user = db.prepare(
             "SELECT * FROM admins WHERE username = ?"
         ).get(username);
@@ -305,7 +320,7 @@ app.post("/login", (req, res) => {
         console.log("USER:", user);
 
         if (!user) {
-            return res.json({ success: false });
+            return res.json({ success: false, message: "User não existe" });
         }
 
         const valid = bcrypt.compareSync(password, user.password);
@@ -313,7 +328,7 @@ app.post("/login", (req, res) => {
         console.log("PASSWORD OK:", valid);
 
         if (!valid) {
-            return res.json({ success: false });
+            return res.json({ success: false, message: "Password errada" });
         }
 
         return res.json({ success: true });
@@ -322,10 +337,12 @@ app.post("/login", (req, res) => {
 
         console.log("LOGIN ERROR:", err);
 
-        return res.status(500).json({ success: false });
+        return res.status(500).json({
+            success: false,
+            message: "Erro no servidor"
+        });
     }
 });
-
 
 //para registar novo user
 app.post("/register", (req, res) => {
