@@ -6,30 +6,31 @@ const path = require("path");
 const bcrypt = require("bcryptjs");
 
 const PORT = process.env.PORT || 3000;
-
-// middleware
-app.use(cors());
-app.use(express.json());
-app.use(express.static(path.join(__dirname, "public")));
-
-// servidor
+//servidor
 app.listen(PORT, "0.0.0.0", () => {
     console.log("Server running on " + PORT);
 });
 
-// ROOT
+app.use(cors());
+
+app.use(express.json());
+app.use(express.static(path.join(__dirname, "public")));
+
 app.get("/", (req, res) => {
     res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-// SINONIMOS (IMPORTANTE: tem de existir!)
+
+
+
 const synonyms = {
     inscricao: ["matricula", "registo", "entrar"],
     notas: ["classificacao", "resultado", "pontuacao"],
     mensalidade: ["propina", "pagamento"]
 };
 
-// EXPAND WORDS
+
+//para reconhecer outras palavras
 function expandWords(words) {
     let expanded = [...words];
 
@@ -45,7 +46,7 @@ function expandWords(words) {
     return [...new Set(expanded)];
 }
 
-// NORMALIZE
+/* ---------------- UTIL ---------------- */
 function normalize(text) {
     return text
         .toLowerCase()
@@ -54,21 +55,17 @@ function normalize(text) {
 }
 
 /* ---------------- CHATBOT (VERSÃO ESTÁVEL FINAL) ---------------- */
-app.post("/chat", async (req, res) => {
+app.post("/chat", (req, res) => {
 
     const message = req.body.message;
 
     console.log("Mensagem recebida:", message);
 
+    // SELECT (better-sqlite3)
     let faqs;
-
     try {
-        // SELECT (PostgreSQL)
-        const result = await db.query("SELECT * FROM faq");
-        faqs = result.rows;
-
+        faqs = db.prepare("SELECT * FROM faq").all();
     } catch (err) {
-        console.log(err);
         return res.json({ response: "Erro no servidor" });
     }
 
@@ -113,78 +110,59 @@ app.post("/chat", async (req, res) => {
         response = "Não percebi a tua pergunta.";
     }
 
-    try {
-        // INSERT (PostgreSQL)
-        await db.query(
-            "INSERT INTO logs (message, response) VALUES ($1, $2)",
-            [message, response]
-        );
-
-    } catch (err) {
-        console.log(err);
-    }
+    // INSERT (better-sqlite3)
+    db.prepare(
+        "INSERT INTO logs (message, response) VALUES (?, ?)"
+    ).run(message, response);
 
     res.json({ response });
 });
+/* ---------------- FAQS ---------------- */
+app.get("/faqs", (req, res) => {
 
-//faqs
-app.get("/faqs", async (req, res) => {
-
-    try {
-        const result = await db.query("SELECT * FROM faq");
-        res.json(result.rows);
-
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-
+   try {
+    const rows = db.prepare("SELECT * FROM faq").all();
+    res.json(rows);
+} catch (err) {
+    res.status(500).json({ error: err.message });
+}
 });
 
-//adicionar novas faqs
-app.post("/add-faq", async (req, res) => {
+/* ---------------- ADD FAQ ---------------- */
+app.post("/add-faq", (req, res) => {
 
     const { question, answer } = req.body;
 
-    console.log("FAQ RECEBIDA:", question, answer);
-    console.log("DB CONNECTION OK");
-
+    console.log("FAQ RECEBIDA:", question, answer); 
+    
     try {
 
-        // INSERT FAQ (PostgreSQL)
-        const result = await db.query(
-            "INSERT INTO faq (question, answer, variations, answers) VALUES ($1, $2, '', '') RETURNING *",
-            [question, answer]
-        );
+        const result = db.prepare(
+            "INSERT INTO faq (question, answer, variations, answers) VALUES (?, ?, '', '')"
+        ).run(question, answer);
 
-        console.log("INSERT OK:", result.rows[0]);
+        console.log("INSERT OK:", result); 
 
-        // UPDATE logs (PostgreSQL)
-        await db.query(
-            "UPDATE logs SET response = 'ANSWERED' WHERE message = $1",
-            [question]
-        );
+        db.prepare(
+            "UPDATE logs SET response = 'ANSWERED' WHERE message = ?"
+        ).run(question);
 
         res.json({ success: true });
 
     } catch (err) {
-
-        console.log("ERRO ADD FAQ:", err);
-
+        console.log("ERRO ADD FAQ:", err); // 👈 AQUI
         res.status(500).json({ error: err.message });
     }
 });
 
-//apagar faq
-app.delete("/faq/:id", async (req, res) => {
-
-    const id = req.params.id;
+/* ---------------- DELETE FAQ ---------------- */
+app.delete("/faq/:id", (req, res) => {
 
     try {
 
-        await db.query(
-            "DELETE FROM faq WHERE id = $1",
-            [id]
-        );
+        db.prepare(
+            "DELETE FROM faq WHERE id = ?"
+        ).run(req.params.id);
 
         res.json({ success: true });
 
@@ -200,30 +178,24 @@ app.delete("/faq/:id", async (req, res) => {
 
 });
 
-//update faq
-app.put("/faq/:id", async (req, res) => {
-
-    const id = req.params.id;
-    const { question, answer, variations, answers } = req.body;
+/* ---------------- UPDATE FAQ ---------------- */
+app.put("/faq/:id", (req, res) => {
 
     try {
 
-        await db.query(
-            `
+        const id = req.params.id;
+        const { question, answer, variations, answers } = req.body;
+
+        db.prepare(`
             UPDATE faq
-            SET question = $1,
-                answer = $2,
-                variations = $3,
-                answers = $4
-            WHERE id = $5
-            `,
-            [
-                question,
-                answer,
-                variations || "",
-                answers || "",
-                id
-            ]
+            SET question = ?, answer = ?, variations = ?, answers = ?
+            WHERE id = ?
+        `).run(
+            question,
+            answer,
+            variations || "",
+            answers || "",
+            id
         );
 
         res.json({ success: true });
@@ -239,88 +211,61 @@ app.put("/faq/:id", async (req, res) => {
     }
 
 });
-//unanswered (pergunta nao respondida)
-app.get("/unanswered", async (req, res) => {
+/* ---------------- UNANSWERED ---------------- */
+app.get("/unanswered", (req, res) => {
 
-    try {
+   const rows = db.prepare(`
+SELECT *
+FROM logs
+WHERE response = 'Não percebi a tua pergunta.'
+ORDER BY id DESC
+`).all();
 
-        const result = await db.query(`
-            SELECT *
-            FROM logs
-            WHERE response = $1
-            ORDER BY id DESC
-        `, ["Não percebi a tua pergunta."]);
-
-        res.json(result.rows);
-
-    } catch (err) {
-
-        console.log(err);
-
-        res.status(500).json({ error: err.message });
-    }
-
+res.json(rows);
 });
 
-//answered
-app.post("/mark-answered", async (req, res) => {
+/* ---------------- MARK ANSWERED ---------------- */
+app.post("/mark-answered", (req, res) => {
 
     const { message } = req.body;
 
-    try {
+   db.prepare(`
+UPDATE logs
+SET response='ANSWERED'
+WHERE message=? AND response='Não percebi a tua pergunta.'
+`).run(message);
 
-        await db.query(`
-            UPDATE logs
-            SET response = 'ANSWERED'
-            WHERE message = $1
-            AND response = 'Não percebi a tua pergunta.'
-        `, [message]);
-
-        res.json({ success: true });
-
-    } catch (err) {
-
-        console.log(err);
-
-        res.status(500).json({
-            success: false,
-            error: err.message
-        });
-    }
-
+res.json({ success: true });
 });
 
-//STATS
-app.get("/stats", async (req, res) => {
+/* ---------------- STATS ---------------- */
+app.get("/stats", (req, res) => {
 
     try {
 
-        // TOP perguntas
-        const topResult = await db.query(`
+        const top = db.prepare(`
             SELECT message, COUNT(*) as total
             FROM logs
             GROUP BY message
             ORDER BY total DESC
             LIMIT 5
-        `);
+        `).all();
 
-        // total de logs
-        const countResult = await db.query(`
+        const count = db.prepare(`
             SELECT COUNT(*) as total
             FROM logs
-        `);
+        `).get();
 
-        // não respondidas
-        const unansweredResult = await db.query(`
+        const unanswered = db.prepare(`
             SELECT COUNT(*) as unanswered
             FROM logs
-            WHERE response = $1
-        `, ["Não percebi a tua pergunta."]);
+            WHERE response = 'Não percebi a tua pergunta.'
+        `).get();
 
         res.json({
-            total: countResult.rows[0].total,
-            unanswered: unansweredResult.rows[0].unanswered,
-            topQuestions: topResult.rows
+            total: count.total,
+            unanswered: unanswered.unanswered,
+            topQuestions: top
         });
 
     } catch (err) {
@@ -336,44 +281,26 @@ app.get("/stats", async (req, res) => {
 
 
 
-//logs
-app.get("/logs", async (req, res) => {
-
-    try {
-
-        const result = await db.query(`
-            SELECT * FROM logs
-        `);
-
-        res.json(result.rows);
-
-    } catch (err) {
-
-        console.log(err);
-
-        res.status(500).json({ error: err.message });
-    }
-
+/* ---------------- LOGS ---------------- */
+app.get("/logs", (req, res) => {
+    const rows = db.prepare("SELECT * FROM logs").all();
+    res.json(rows);
 });
-
-//root
+/* ---------------- ROOT ---------------- */
 app.get("/", (req, res) => {
     res.redirect("/login.html");
 });
 
 //para login
-app.post("/login", async (req, res) => {
+app.post("/login", (req, res) => {
 
     try {
 
         const { username, password } = req.body;
 
-        const result = await db.query(
-            "SELECT * FROM admins WHERE username = $1",
-            [username]
-        );
-
-        const user = result.rows[0];
+        const user = db.prepare(
+            "SELECT * FROM admins WHERE username = ?"
+        ).get(username);
 
         console.log("USER:", user);
 
@@ -401,9 +328,9 @@ app.post("/login", async (req, res) => {
 
 
 //para registar novo user
-app.post("/register", async (req, res) => {
+app.post("/register", (req, res) => {
 
-    console.log("REGISTER BODY:", req.body);
+    console.log("LOGIN BODY:", req.body);
 
     try {
 
@@ -415,18 +342,15 @@ app.post("/register", async (req, res) => {
 
         const hash = bcrypt.hashSync(password, 10);
 
-        await db.query(
-            "INSERT INTO admins (username, password) VALUES ($1, $2)",
-            [username, hash]
-        );
+        db.prepare(
+            "INSERT INTO admins (username, password) VALUES (?, ?)"
+        ).run(username, hash);
 
         return res.json({ success: true });
 
     } catch (err) {
 
-        console.log("REGISTER ERROR:", err);
-
-        if (err.message.includes("unique")) {
+        if (err.message.includes("UNIQUE")) {
             return res.json({ success: false, message: "User já existe" });
         }
 
@@ -434,23 +358,7 @@ app.post("/register", async (req, res) => {
     }
 });
 
-//para resetar os admins no dashboard
-app.get("/reset-admins", async (req, res) => {
-
-    try {
-
-        await db.query("DELETE FROM admins");
-
-        res.json({ success: true });
-
-    } catch (err) {
-
-        console.log(err);
-
-        res.status(500).json({
-            success: false,
-            error: err.message
-        });
-    }
-
+app.get("/reset-admins", (req, res) => {
+    db.prepare("DELETE FROM admins").run();
+    res.json({ success: true });
 });
