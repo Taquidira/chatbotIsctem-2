@@ -160,7 +160,7 @@ async function loadFAQ() {
 
     faqId = getId();
 
-    let res = await fetch("https://chatbotiisctem.onrender.com/faqs");
+    let res = await fetch("https://chatbotIsctem-2.onrender.com/faqs");
     let data = await res.json();
 
     let faq = data.find(f => f.id == faqId);
@@ -182,7 +182,7 @@ async function updateFAQ() {
     let answer = document.getElementById("answer").value;
     let variations = document.getElementById("variations").value;
 
-    await fetch(`https://chatbotiisctem.onrender.com/faq/${faqId}`, {
+    await fetch(`https://chatbotIsctem-2.onrender.com/faq/${faqId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

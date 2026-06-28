@@ -282,7 +282,7 @@ async function loadStats(){
 /* LOGS */
 async function loadLogs(){
 
-    let res = await fetch("https://chatbotiisctem.onrender.com/logs?t=" + Date.now());
+    let res = await fetch("https://chatbotIsctem-2.onrender.com/logs?t=" + Date.now());
     let data = await res.json();
 
     let table = document.getElementById("logs");
@@ -301,7 +301,7 @@ async function loadLogs(){
 /* CHART (RANKING) */
 async function loadCharts(){
 
-    let res = await fetch("https://chatbotiisctem.onrender.com/stats");
+    let res = await fetch("https://chatbotIsctem-2.onrender.com/stats");
     let data = await res.json();
 
     let top = data.topQuestions || [];
@@ -327,7 +327,7 @@ async function loadCharts(){
 
 async function loadUnanswered() {
 
-    const res = await fetch("https://chatbotiisctem.onrender.com/unanswered?t=" + Date.now());
+    const res = await fetch("https://chatbotIsctem-2.onrender.com/unanswered?t=" + Date.now());
     const data = await res.json();
 
     const box = document.getElementById("unanswered");
@@ -376,7 +376,7 @@ async function login() {
     const user = document.getElementById("username").value;
     const pass = document.getElementById("password").value;
 
-    let res = await fetch("https://chatbotiisctem.onrender.com/login", {
+    let res = await fetch("https://chatbotIsctem-2.onrender.com/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username: user, password: pass })
@@ -399,7 +399,7 @@ async function login() {
 //grafico pizza
 async function loadPieChart() {
 
-    let res = await fetch("https://chatbotiisctem.onrender.com/stats");
+    let res = await fetch("https://chatbotIsctem-2.onrender.com/stats");
     let data = await res.json();
 
     console.log("TOP QUESTIONS:", data.topQuestions);

@@ -94,7 +94,7 @@
 
 async function loadFAQs() {
 
-    let res = await fetch("https://chatbotiisctem.onrender.com/faqs");
+    let res = await fetch("https://chatbotIsctem-2.onrender.com/faqs");
     let data = await res.json();
 
     let table = document.getElementById("faqTable");
@@ -121,7 +121,7 @@ function openEdit(id) {
 
 async function deleteFAQ(id) {
 
-    await fetch(`https://chatbotiisctem.onrender.com/faq/${id}`, {
+    await fetch(`https://chatbotIsctem-2.onrender.com/faq/${id}`, {
         method: "DELETE"
     });
 
