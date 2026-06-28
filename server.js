@@ -1,36 +1,35 @@
 const express = require("express");
 const cors = require("cors");
-const db = require("./db.js");
+const db = require("./dbPostgres.js");
 const app = express();
 const path = require("path");
 const bcrypt = require("bcryptjs");
 
 const PORT = process.env.PORT || 3000;
-//servidor
+
+// middleware
+app.use(cors());
+app.use(express.json());
+app.use(express.static(path.join(__dirname, "public")));
+
+// servidor
 app.listen(PORT, "0.0.0.0", () => {
     console.log("Server running on " + PORT);
 });
 
-app.use(cors());
-
-app.use(express.json());
-app.use(express.static(path.join(__dirname, "public")));
-
+// ROOT
 app.get("/", (req, res) => {
     res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-
-
-
+// SINONIMOS (IMPORTANTE: tem de existir!)
 const synonyms = {
     inscricao: ["matricula", "registo", "entrar"],
     notas: ["classificacao", "resultado", "pontuacao"],
     mensalidade: ["propina", "pagamento"]
 };
 
-
-//para reconhecer outras palavras
+// EXPAND WORDS
 function expandWords(words) {
     let expanded = [...words];
 
@@ -46,7 +45,7 @@ function expandWords(words) {
     return [...new Set(expanded)];
 }
 
-/* ---------------- UTIL ---------------- */
+// NORMALIZE
 function normalize(text) {
     return text
         .toLowerCase()
@@ -55,17 +54,21 @@ function normalize(text) {
 }
 
 /* ---------------- CHATBOT (VERSÃO ESTÁVEL FINAL) ---------------- */
-app.post("/chat", (req, res) => {
+app.post("/chat", async (req, res) => {
 
     const message = req.body.message;
 
     console.log("Mensagem recebida:", message);
 
-    // SELECT (better-sqlite3)
     let faqs;
+
     try {
-        faqs = db.prepare("SELECT * FROM faq").all();
+        // SELECT (PostgreSQL)
+        const result = await db.query("SELECT * FROM faq");
+        faqs = result.rows;
+
     } catch (err) {
+        console.log(err);
         return res.json({ response: "Erro no servidor" });
     }
 
@@ -110,92 +113,77 @@ app.post("/chat", (req, res) => {
         response = "Não percebi a tua pergunta.";
     }
 
-    // INSERT (better-sqlite3)
-    db.prepare(
-        "INSERT INTO logs (message, response) VALUES (?, ?)"
-    ).run(message, response);
+    try {
+        // INSERT (PostgreSQL)
+        await db.query(
+            "INSERT INTO logs (message, response) VALUES ($1, $2)",
+            [message, response]
+        );
+
+    } catch (err) {
+        console.log(err);
+    }
 
     res.json({ response });
 });
-/* ---------------- FAQS ---------------- */
-app.get("/faqs", (req, res) => {
 
-   try {
-    const rows = db.prepare("SELECT * FROM faq").all();
-    res.json(rows);
-} catch (err) {
-    res.status(500).json({ error: err.message });
-}
+//faqs
+app.get("/faqs", async (req, res) => {
+
+    try {
+        const result = await db.query("SELECT * FROM faq");
+        res.json(result.rows);
+
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+
 });
 
-/* ---------------- ADD FAQ ---------------- */
-app.post("/add-faq", (req, res) => {
+//adicionar novas faqs
+app.post("/add-faq", async (req, res) => {
 
     const { question, answer } = req.body;
 
-    console.log("FAQ RECEBIDA:", question, answer); // 👈 AQUI
+    console.log("FAQ RECEBIDA:", question, answer);
+    console.log("DB CONNECTION OK");
 
     try {
 
-        const result = db.prepare(
-            "INSERT INTO faq (question, answer, variations, answers) VALUES (?, ?, '', '')"
-        ).run(question, answer);
+        // INSERT FAQ (PostgreSQL)
+        const result = await db.query(
+            "INSERT INTO faq (question, answer, variations, answers) VALUES ($1, $2, '', '') RETURNING *",
+            [question, answer]
+        );
 
-        console.log("INSERT OK:", result); // 👈 AQUI
+        console.log("INSERT OK:", result.rows[0]);
 
-        db.prepare(
-            "UPDATE logs SET response = 'ANSWERED' WHERE message = ?"
-        ).run(question);
+        // UPDATE logs (PostgreSQL)
+        await db.query(
+            "UPDATE logs SET response = 'ANSWERED' WHERE message = $1",
+            [question]
+        );
 
         res.json({ success: true });
 
     } catch (err) {
-        console.log("ERRO ADD FAQ:", err); // 👈 AQUI
+
+        console.log("ERRO ADD FAQ:", err);
+
         res.status(500).json({ error: err.message });
     }
 });
 
-/* ---------------- DELETE FAQ ---------------- */
-app.delete("/faq/:id", (req, res) => {
+//apagar faq
+app.delete("/faq/:id", async (req, res) => {
+
+    const id = req.params.id;
 
     try {
 
-        db.prepare(
-            "DELETE FROM faq WHERE id = ?"
-        ).run(req.params.id);
-
-        res.json({ success: true });
-
-    } catch (err) {
-
-        console.log(err);
-
-        res.status(500).json({
-            success: false,
-            error: err.message
-        });
-    }
-
-});
-
-/* ---------------- UPDATE FAQ ---------------- */
-app.put("/faq/:id", (req, res) => {
-
-    try {
-
-        const id = req.params.id;
-        const { question, answer, variations, answers } = req.body;
-
-        db.prepare(`
-            UPDATE faq
-            SET question = ?, answer = ?, variations = ?, answers = ?
-            WHERE id = ?
-        `).run(
-            question,
-            answer,
-            variations || "",
-            answers || "",
-            id
+        await db.query(
+            "DELETE FROM faq WHERE id = $1",
+            [id]
         );
 
         res.json({ success: true });
@@ -211,61 +199,128 @@ app.put("/faq/:id", (req, res) => {
     }
 
 });
-/* ---------------- UNANSWERED ---------------- */
-app.get("/unanswered", (req, res) => {
 
-   const rows = db.prepare(`
-SELECT *
-FROM logs
-WHERE response = 'Não percebi a tua pergunta.'
-ORDER BY id DESC
-`).all();
+//update faq
+app.put("/faq/:id", async (req, res) => {
 
-res.json(rows);
-});
-
-/* ---------------- MARK ANSWERED ---------------- */
-app.post("/mark-answered", (req, res) => {
-
-    const { message } = req.body;
-
-   db.prepare(`
-UPDATE logs
-SET response='ANSWERED'
-WHERE message=? AND response='Não percebi a tua pergunta.'
-`).run(message);
-
-res.json({ success: true });
-});
-
-/* ---------------- STATS ---------------- */
-app.get("/stats", (req, res) => {
+    const id = req.params.id;
+    const { question, answer, variations, answers } = req.body;
 
     try {
 
-        const top = db.prepare(`
+        await db.query(
+            `
+            UPDATE faq
+            SET question = $1,
+                answer = $2,
+                variations = $3,
+                answers = $4
+            WHERE id = $5
+            `,
+            [
+                question,
+                answer,
+                variations || "",
+                answers || "",
+                id
+            ]
+        );
+
+        res.json({ success: true });
+
+    } catch (err) {
+
+        console.log(err);
+
+        res.status(500).json({
+            success: false,
+            error: err.message
+        });
+    }
+
+});
+//unanswered (pergunta nao respondida)
+app.get("/unanswered", async (req, res) => {
+
+    try {
+
+        const result = await db.query(`
+            SELECT *
+            FROM logs
+            WHERE response = $1
+            ORDER BY id DESC
+        `, ["Não percebi a tua pergunta."]);
+
+        res.json(result.rows);
+
+    } catch (err) {
+
+        console.log(err);
+
+        res.status(500).json({ error: err.message });
+    }
+
+});
+
+//answered
+app.post("/mark-answered", async (req, res) => {
+
+    const { message } = req.body;
+
+    try {
+
+        await db.query(`
+            UPDATE logs
+            SET response = 'ANSWERED'
+            WHERE message = $1
+            AND response = 'Não percebi a tua pergunta.'
+        `, [message]);
+
+        res.json({ success: true });
+
+    } catch (err) {
+
+        console.log(err);
+
+        res.status(500).json({
+            success: false,
+            error: err.message
+        });
+    }
+
+});
+
+//STATS
+app.get("/stats", async (req, res) => {
+
+    try {
+
+        // TOP perguntas
+        const topResult = await db.query(`
             SELECT message, COUNT(*) as total
             FROM logs
             GROUP BY message
             ORDER BY total DESC
             LIMIT 5
-        `).all();
+        `);
 
-        const count = db.prepare(`
+        // total de logs
+        const countResult = await db.query(`
             SELECT COUNT(*) as total
             FROM logs
-        `).get();
+        `);
 
-        const unanswered = db.prepare(`
+        // não respondidas
+        const unansweredResult = await db.query(`
             SELECT COUNT(*) as unanswered
             FROM logs
-            WHERE response = 'Não percebi a tua pergunta.'
-        `).get();
+            WHERE response = $1
+        `, ["Não percebi a tua pergunta."]);
 
         res.json({
-            total: count.total,
-            unanswered: unanswered.unanswered,
-            topQuestions: top
+            total: countResult.rows[0].total,
+            unanswered: unansweredResult.rows[0].unanswered,
+            topQuestions: topResult.rows
         });
 
     } catch (err) {
@@ -281,26 +336,44 @@ app.get("/stats", (req, res) => {
 
 
 
-/* ---------------- LOGS ---------------- */
-app.get("/logs", (req, res) => {
-    const rows = db.prepare("SELECT * FROM logs").all();
-    res.json(rows);
+//logs
+app.get("/logs", async (req, res) => {
+
+    try {
+
+        const result = await db.query(`
+            SELECT * FROM logs
+        `);
+
+        res.json(result.rows);
+
+    } catch (err) {
+
+        console.log(err);
+
+        res.status(500).json({ error: err.message });
+    }
+
 });
-/* ---------------- ROOT ---------------- */
+
+//root
 app.get("/", (req, res) => {
     res.redirect("/login.html");
 });
 
 //para login
-app.post("/login", (req, res) => {
+app.post("/login", async (req, res) => {
 
     try {
 
         const { username, password } = req.body;
 
-        const user = db.prepare(
-            "SELECT * FROM admins WHERE username = ?"
-        ).get(username);
+        const result = await db.query(
+            "SELECT * FROM admins WHERE username = $1",
+            [username]
+        );
+
+        const user = result.rows[0];
 
         console.log("USER:", user);
 
@@ -328,9 +401,9 @@ app.post("/login", (req, res) => {
 
 
 //para registar novo user
-app.post("/register", (req, res) => {
+app.post("/register", async (req, res) => {
 
-    console.log("LOGIN BODY:", req.body);
+    console.log("REGISTER BODY:", req.body);
 
     try {
 
@@ -342,15 +415,18 @@ app.post("/register", (req, res) => {
 
         const hash = bcrypt.hashSync(password, 10);
 
-        db.prepare(
-            "INSERT INTO admins (username, password) VALUES (?, ?)"
-        ).run(username, hash);
+        await db.query(
+            "INSERT INTO admins (username, password) VALUES ($1, $2)",
+            [username, hash]
+        );
 
         return res.json({ success: true });
 
     } catch (err) {
 
-        if (err.message.includes("UNIQUE")) {
+        console.log("REGISTER ERROR:", err);
+
+        if (err.message.includes("unique")) {
             return res.json({ success: false, message: "User já existe" });
         }
 
@@ -358,7 +434,23 @@ app.post("/register", (req, res) => {
     }
 });
 
-app.get("/reset-admins", (req, res) => {
-    db.prepare("DELETE FROM admins").run();
-    res.json({ success: true });
+//para resetar os admins no dashboard
+app.get("/reset-admins", async (req, res) => {
+
+    try {
+
+        await db.query("DELETE FROM admins");
+
+        res.json({ success: true });
+
+    } catch (err) {
+
+        console.log(err);
+
+        res.status(500).json({
+            success: false,
+            error: err.message
+        });
+    }
+
 });
