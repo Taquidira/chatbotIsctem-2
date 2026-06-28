@@ -182,7 +182,7 @@ async function updateFAQ() {
     let answer = document.getElementById("answer").value;
     let variations = document.getElementById("variations").value;
 
-    await fetch(`http://localhost:3000/faq/${faqId}`, {
+    await fetch(`https://chatbotiisctem.onrender.com/faq/${faqId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
