@@ -133,25 +133,26 @@ app.post("/add-faq", (req, res) => {
 
     const { question, answer } = req.body;
 
+    console.log("FAQ RECEBIDA:", question, answer); // 👈 AQUI
+
     try {
-    db.prepare(
-        "INSERT INTO faq (question, answer, variations, answers) VALUES (?, ?, '', '')"
-    ).run(question, answer);
 
-    db.prepare(
-        "UPDATE logs SET response = 'ANSWERED' WHERE message = ?"
-    ).run(question);
+        const result = db.prepare(
+            "INSERT INTO faq (question, answer, variations, answers) VALUES (?, ?, '', '')"
+        ).run(question, answer);
 
-    res.json({ success: true });
+        console.log("INSERT OK:", result); // 👈 AQUI
 
-} catch (err) {
-    console.log(err);
-    res.status(500).json({ error: err.message });
-}
+        db.prepare(
+            "UPDATE logs SET response = 'ANSWERED' WHERE message = ?"
+        ).run(question);
 
-    db.prepare(
-    "UPDATE logs SET response = 'ANSWERED' WHERE message = ?"
-).run(question);
+        res.json({ success: true });
+
+    } catch (err) {
+        console.log("ERRO ADD FAQ:", err); // 👈 AQUI
+        res.status(500).json({ error: err.message });
+    }
 });
 
 /* ---------------- DELETE FAQ ---------------- */
