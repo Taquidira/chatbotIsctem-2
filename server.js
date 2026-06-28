@@ -3,6 +3,7 @@ const cors = require("cors");
 const db = require("./db.js");
 const app = express();
 const path = require("path");
+const bcrypt = require("bcryptjs");
 
 const PORT = process.env.PORT || 3000;
 //servidor
@@ -292,6 +293,9 @@ app.get("/", (req, res) => {
 //para login
 app.post("/login", (req, res) => {
 
+    console.log("USER:", user);
+    console.log("PASSWORD OK:", valid);
+
     try {
 
         const { username, password } = req.body;
@@ -345,4 +349,9 @@ app.post("/register", (req, res) => {
 
         return res.status(500).json({ success: false });
     }
+});
+
+app.get("/reset-admins", (req, res) => {
+    db.prepare("DELETE FROM admins").run();
+    res.json({ success: true });
 });
