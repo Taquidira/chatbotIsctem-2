@@ -237,15 +237,19 @@ async function register() {
 
 async function deleteFaq(id) {
 
-    const res = await fetch(`/faq/${id}`, {
+    const confirmDelete = confirm("Tens a certeza que queres apagar esta FAQ?");
+
+    if (!confirmDelete) return;
+
+    const res = await fetch(`https://chatbotiisctem.onrender.com/faq/${id}`, {
         method: "DELETE"
     });
 
     const data = await res.json();
 
     if (data.success) {
-        alert("FAQ apagada");
-        location.reload();
+        alert("FAQ apagada com sucesso!"); // 👈 NOTIFICAÇÃO
+        location.reload(); // recarrega a tabela
     } else {
         alert("Erro ao apagar FAQ");
     }
