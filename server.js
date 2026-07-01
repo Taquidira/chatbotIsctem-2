@@ -23,7 +23,7 @@ async function loadModel() {
     console.log("Modelo de IA carregado com sucesso");
 }
 
-loadModel();s
+loadModel();
 
 const PORT = process.env.PORT || 3000;
 //servidor
