@@ -4,7 +4,7 @@ const db = require("./db.js");
 const app = express();
 const path = require("path");
 const bcrypt = require("bcryptjs");
-const { pipeline } = require("@xenova/transformers");
+const { pipeline, env } = require("@xenova/transformers");
 
 env.allowLocalModels = false;
 
