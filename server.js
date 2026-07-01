@@ -4,14 +4,38 @@ const db = require("./db.js");
 const app = express();
 const path = require("path");
 const bcrypt = require("bcryptjs");
-const natural = require("natural");
-const TfIdf = natural.TfIdf;
+const { pipeline } = require("@xenova/transformers");
+
+env.allowLocalModels = false;
+
+// 🔥 ESTE É O "LOADER"
+let embedder;
+
+async function loadModel() {
+    embedder = await pipeline(
+        "feature-extraction",
+        "Xenova/all-MiniLM-L6-v2",
+        {
+            quantized: true
+        }
+    );
+
+    console.log("Modelo de IA carregado com sucesso");
+}
+
+loadModel();s
 
 const PORT = process.env.PORT || 3000;
 //servidor
 app.listen(PORT, "0.0.0.0", () => {
     console.log("Server running on " + PORT);
 });
+
+
+let conversationContext = {
+    intent: null,
+    keywords: []
+};
 
 app.use(cors());
 
@@ -59,52 +83,18 @@ function normalize(text) {
 /* ---------------- CHATBOT (VERSÃO ESTÁVEL FINAL) ---------------- */
 app.post("/chat", (req, res) => {
 
+    if (!embedder) {
+    return res.json({
+        response: "Sistema ainda a iniciar, tenta novamente em segundos."
+    });
+}
+
     try {
 
         const message = req.body.message;
+        
 
-        console.log("Mensagem recebida:", message);
-
-        if (!message) {
-            return res.json({ response: "Mensagem vazia" });
-        }
-
-        // 🔥 PROTEÇÃO DB (isto evita crash no Render)
-        let faqs = [];
-
-        try {
-            faqs = db.prepare("SELECT * FROM faq").all();
-            console.log("FAQs carregadas:", faqs.length);
-        } catch (dbErr) {
-            console.log("ERRO DB FAQ:", dbErr);
-            return res.json({ response: "Erro no servidor (base de dados)" });
-        }
-
-        // IA intermédia usando TF-IDF
-         const tfidf = new TfIdf();
-
-         faqs.forEach(faq => {
-              tfidf.addDocument(
-               normalize(`
-                  ${faq.question}
-                  ${faq.variations || ""}
-                  ${faq.answers || ""}
-        `)
-    );
-});
-
-          let bestFaq = null;
-           let bestScore = 0;
-
-           tfidf.tfidfs(normalize(message), (i, measure) => {
-
-           if (measure > bestScore) {
-             bestScore = measure;
-                bestFaq = faqs[i];
-    }
-
-});
-
+      
         let response;
 
         if (bestFaq && bestScore >= 0.08) {
