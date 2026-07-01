@@ -81,23 +81,71 @@ function normalize(text) {
 }
 
 /* ---------------- CHATBOT (VERSÃO ESTÁVEL FINAL) ---------------- */
-app.post("/chat", (req, res) => {
-
-    if (!embedder) {
-    return res.json({
-        response: "Sistema ainda a iniciar, tenta novamente em segundos."
-    });
-}
+app.post("/chat", async (req, res) => {
 
     try {
 
         const message = req.body.message;
-        
 
-      
+        if (!message) {
+            return res.json({ response: "Mensagem vazia" });
+        }
+
+        // 🔥 proteção embeddings
+        if (!embedder) {
+            return res.json({
+                response: "Sistema ainda a iniciar, tenta novamente em segundos."
+            });
+        }
+
+        let faqs = [];
+
+        try {
+            faqs = db.prepare("SELECT * FROM faq").all();
+        } catch (dbErr) {
+            console.log("ERRO DB FAQ:", dbErr);
+            return res.json({ response: "Erro no servidor (base de dados)" });
+        }
+
+        // 🔥 EMBEDDING DA MENSAGEM
+        const userEmbRaw = await embedder(message);
+        const userEmb = Array.from(userEmbRaw.data);
+
+        let bestFaq = null;
+        let bestScore = 0;
+
+        for (let faq of faqs) {
+
+            const text = `
+                ${faq.question}
+                ${faq.variations || ""}
+                ${faq.answers || ""}
+            `;
+
+            const faqEmbRaw = await embedder(text);
+            const faqEmb = Array.from(faqEmbRaw.data);
+
+            let dot = 0;
+            let normA = 0;
+            let normB = 0;
+
+            for (let i = 0; i < userEmb.length; i++) {
+                dot += userEmb[i] * faqEmb[i];
+                normA += userEmb[i] * userEmb[i];
+                normB += faqEmb[i] * faqEmb[i];
+            }
+
+            const score = dot / (Math.sqrt(normA) * Math.sqrt(normB));
+
+            if (score > bestScore) {
+                bestScore = score;
+                bestFaq = faq;
+            }
+        }
+
         let response;
 
-        if (bestFaq && bestScore >= 0.08) {
+        if (bestFaq && bestScore >= 0.55) {
             response = bestFaq.answer;
         } else {
             response = "Não percebi a tua pergunta.";
