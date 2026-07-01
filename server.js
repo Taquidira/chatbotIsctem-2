@@ -108,7 +108,7 @@ app.post("/chat", async (req, res) => {
         }
 
         // 🔥 EMBEDDING DA MENSAGEM
-        const userEmbRaw = await embedder(message);
+        const userEmbRaw = await embedder(normalize(message));
         const userEmb = Array.from(userEmbRaw.data);
 
         let bestFaq = null;
@@ -116,13 +116,13 @@ app.post("/chat", async (req, res) => {
 
         for (let faq of faqs) {
 
-            const text = `
-                ${faq.question}
-                ${faq.variations || ""}
-                ${faq.answers || ""}
-            `;
+           const text = `
+Pergunta: ${faq.question}
+Exemplos: ${faq.variations || ""}
+Resposta: ${faq.answer}
+`;
 
-            const faqEmbRaw = await embedder(text);
+            const faqEmbRaw = await embedder(normalize(text));
             const faqEmb = Array.from(faqEmbRaw.data);
 
             let dot = 0;
@@ -145,7 +145,7 @@ app.post("/chat", async (req, res) => {
 
         let response;
 
-        if (bestFaq && bestScore >= 0.55) {
+        if (bestFaq && bestScore >= 0.35) {
             response = bestFaq.answer;
         } else {
             response = "Não percebi a tua pergunta.";
