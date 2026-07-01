@@ -145,10 +145,10 @@ Resposta: ${faq.answer}
 
         let response;
 
-        if (bestFaq && bestScore >= 0.35) {
+        if (bestFaq && bestScore >= 0.20) {
             response = bestFaq.answer;
         } else {
-            response = "Não percebi a tua pergunta.";
+            response = "Não consegui encontrar uma resposta exacta. Podes reformular a pergunta?";
         }
 
         try {
