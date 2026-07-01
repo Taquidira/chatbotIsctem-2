@@ -4,6 +4,8 @@ const db = require("./db.js");
 const app = express();
 const path = require("path");
 const bcrypt = require("bcryptjs");
+const natural = require("natural");
+const TfIdf = natural.TfIdf;
 
 const PORT = process.env.PORT || 3000;
 //servidor
@@ -78,42 +80,34 @@ app.post("/chat", (req, res) => {
             return res.json({ response: "Erro no servidor (base de dados)" });
         }
 
-        let userWords = expandWords(
-            normalize(message)
-                .split(" ")
-                .filter(w => w.length > 1)
-        );
+        // IA intermédia usando TF-IDF
+         const tfidf = new TfIdf();
 
-        let bestFaq = null;
-        let bestScore = 0;
+         faqs.forEach(faq => {
+              tfidf.addDocument(
+               normalize(`
+                  ${faq.question}
+                  ${faq.variations || ""}
+                  ${faq.answers || ""}
+        `)
+    );
+});
 
-        for (let faq of faqs) {
+          let bestFaq = null;
+           let bestScore = 0;
 
-            let allText = `
-                ${faq.question} 
-                ${faq.variations || ""} 
-                ${faq.answers || ""}
-            `;
+           tfidf.tfidfs(normalize(message), (i, measure) => {
 
-            let faqWords = normalize(allText)
-                .split(" ")
-                .filter(w => w.length > 1);
+           if (measure > bestScore) {
+             bestScore = measure;
+                bestFaq = faqs[i];
+    }
 
-            let common = faqWords.filter(w => userWords.includes(w)).length;
-
-            if (common === 0) continue;
-
-            let score = common / faqWords.length;
-
-            if (score > bestScore) {
-                bestScore = score;
-                bestFaq = faq;
-            }
-        }
+});
 
         let response;
 
-        if (bestFaq && bestScore >= 0.25) {
+        if (bestFaq && bestScore >= 0.08) {
             response = bestFaq.answer;
         } else {
             response = "Não percebi a tua pergunta.";
